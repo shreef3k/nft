@@ -26,7 +26,7 @@ export async function initDb() {
     create table if not exists backgrounds (
       id uuid primary key default gen_random_uuid(),
       name text not null,
-      image_url text,
+      file_path text,
       color_hex text,
       rarity numeric(5,2) not null default 1,
       created_by uuid not null references users(id),
@@ -36,8 +36,8 @@ export async function initDb() {
     create table if not exists models (
       id uuid primary key default gen_random_uuid(),
       name text not null,
-      image_url text not null,
-      animation_url text,
+      file_path text not null,
+      animation_path text,
       rarity numeric(5,2) not null default 1,
       created_by uuid not null references users(id),
       created_at timestamptz not null default now()
@@ -150,12 +150,9 @@ export async function initDb() {
       created_at timestamptz not null default now()
     );
 
-    alter table backgrounds add column if not exists color_hex text;
-    alter table models add column if not exists animation_url text;
-    alter table nft_templates add column if not exists collection_id uuid references collections(id);
-    alter table nft_templates add column if not exists emoji_id uuid references emojis(id);
-    alter table nft_templates add column if not exists width int not null default ${NFT_WIDTH};
-    alter table nft_templates add column if not exists height int not null default ${NFT_HEIGHT};
+    alter table backgrounds add column if not exists file_path text;
+    alter table models add column if not exists file_path text;
+    alter table models add column if not exists animation_path text;
     alter table nft_instances add column if not exists blockchain_hash text;
   `);
 }
@@ -169,4 +166,26 @@ export async function ensureAdmin(passwordHash) {
      values ('admin@nft.local', $1, 'admin', 100000)`,
     [passwordHash]
   );
+}
+
+export async function resetFactory(passwordHash) {
+  await pool.query(`
+    truncate table
+      blockchain_blocks,
+      orders,
+      listings,
+      nft_instances,
+      nft_templates,
+      collection_emojis,
+      collection_models,
+      collection_backgrounds,
+      collections,
+      emojis,
+      models,
+      backgrounds,
+      users
+    restart identity cascade;
+  `);
+
+  await ensureAdmin(passwordHash);
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { api, getToken } from '../../lib/api';
+import { API_URL, api, getToken } from '../../lib/api';
 import { getSession } from '../../lib/auth';
 
 type Option = { id: string; name?: string; value?: string };
@@ -16,12 +16,14 @@ export default function AdminPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
 
   const [name, setName] = useState('');
-  const [imageUrl, setImageUrl] = useState('https://placehold.co/512x512/png');
-  const [animationUrl, setAnimationUrl] = useState('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3V5NnY2ZnBjMjV4b2N2c3VnM3N2c2M0NnQ4ZmQ0a2l4Y3RnczZwdCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/13HgwGsXF0aiGY/giphy.gif');
   const [hex, setHex] = useState('#4466FF');
   const [emoji, setEmoji] = useState('🔥');
   const [collectionName, setCollectionName] = useState('Genesis');
   const [collectionDescription, setCollectionDescription] = useState('First collection');
+
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
+  const [modelFile, setModelFile] = useState<File | null>(null);
+  const [animationFile, setAnimationFile] = useState<File | null>(null);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
   const [selectedBackgroundId, setSelectedBackgroundId] = useState('');
@@ -31,18 +33,14 @@ export default function AdminPage() {
   const [mintSupply, setMintSupply] = useState(1);
   const [mintPrefix, setMintPrefix] = useState('Genesis NFT');
 
-  const selectedCollection = useMemo(
-    () => collections.find((c) => c.id === selectedCollectionId),
-    [collections, selectedCollectionId]
-  );
+  const [c1, setC1] = useState('');
+  const [c2, setC2] = useState('');
+  const [c3, setC3] = useState('');
+
+  const selectedCollection = useMemo(() => collections.find((c) => c.id === selectedCollectionId), [collections, selectedCollectionId]);
 
   async function load() {
-    const data = await api<{
-      backgrounds: Option[];
-      models: Option[];
-      emojis: Option[];
-      collections: Collection[];
-    }>('/admin/bootstrap', undefined, getToken());
+    const data = await api<{ backgrounds: Option[]; models: Option[]; emojis: Option[]; collections: Collection[] }>('/admin/bootstrap', undefined, getToken());
     setBackgrounds(data.backgrounds);
     setModels(data.models);
     setEmojis(data.emojis);
@@ -55,14 +53,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     const session = getSession();
-    if (!session.user) {
-      location.href = '/login';
-      return;
-    }
-    if (session.user.role !== 'admin') {
-      location.href = '/';
-      return;
-    }
+    if (!session.user) return void (location.href = '/login');
+    if (session.user.role !== 'admin') return void (location.href = '/');
     setAllowed(true);
     setReady(true);
     load().catch(() => null);
@@ -73,13 +65,35 @@ export default function AdminPage() {
 
   async function createBackground(e: FormEvent) {
     e.preventDefault();
-    await api('/admin/backgrounds', { method: 'POST', body: JSON.stringify({ name, imageUrl, colorHex: hex, rarity: 5 }) }, getToken());
+    if (!backgroundFile) return alert('Нужен файл фона');
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('colorHex', hex);
+    fd.append('rarity', '5');
+    fd.append('backgroundFile', backgroundFile);
+
+    await fetch(`${API_URL}/admin/backgrounds`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: fd
+    });
     await load();
   }
 
   async function createModel(e: FormEvent) {
     e.preventDefault();
-    await api('/admin/models', { method: 'POST', body: JSON.stringify({ name, imageUrl, animationUrl, rarity: 5 }) }, getToken());
+    if (!modelFile || !animationFile) return alert('Нужны оба файла модели');
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('rarity', '5');
+    fd.append('modelFile', modelFile);
+    fd.append('animationFile', animationFile);
+
+    await fetch(`${API_URL}/admin/models`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: fd
+    });
     await load();
   }
 
@@ -95,20 +109,9 @@ export default function AdminPage() {
     await load();
   }
 
-  async function attachBackground() {
-    await api(`/admin/collections/${selectedCollectionId}/backgrounds`, { method: 'POST', body: JSON.stringify({ backgroundId: selectedBackgroundId }) }, getToken());
-    await load();
-  }
-
-  async function attachModel() {
-    await api(`/admin/collections/${selectedCollectionId}/models`, { method: 'POST', body: JSON.stringify({ modelId: selectedModelId }) }, getToken());
-    await load();
-  }
-
-  async function attachEmoji() {
-    await api(`/admin/collections/${selectedCollectionId}/emojis`, { method: 'POST', body: JSON.stringify({ emojiId: selectedEmojiId }) }, getToken());
-    await load();
-  }
+  async function attachBackground() { await api(`/admin/collections/${selectedCollectionId}/backgrounds`, { method: 'POST', body: JSON.stringify({ backgroundId: selectedBackgroundId }) }, getToken()); await load(); }
+  async function attachModel() { await api(`/admin/collections/${selectedCollectionId}/models`, { method: 'POST', body: JSON.stringify({ modelId: selectedModelId }) }, getToken()); await load(); }
+  async function attachEmoji() { await api(`/admin/collections/${selectedCollectionId}/emojis`, { method: 'POST', body: JSON.stringify({ emojiId: selectedEmojiId }) }, getToken()); await load(); }
 
   async function mintCollection() {
     await api(`/admin/collections/${selectedCollectionId}/mint`, {
@@ -118,25 +121,32 @@ export default function AdminPage() {
     alert('Mint завершен');
   }
 
+  async function resetFactoryDb() {
+    if (c1 !== 'YES' || c2 !== 'RESET' || c3 !== 'FACTORY') return alert('Введите подтверждения: YES / RESET / FACTORY');
+    await api('/admin/reset-factory', { method: 'POST', body: JSON.stringify({ confirm1: c1, confirm2: c2, confirm3: c3 }) }, getToken());
+    alert('БД сброшена до заводских. Войдите снова: admin@nft.local / admin123');
+    location.href = '/login';
+  }
+
   return (
     <main className="grid" style={{ gap: 18 }}>
       <h1>Админ панель</h1>
-      <small>Все NFT фиксированного размера 512x512. Сначала: коллекция → компоненты → расчет тиража → mint.</small>
+      <small>Файлы загружаются напрямую (не ссылки). Размер NFT: 512x512.</small>
 
       <section className="grid grid-3">
         <form className="card grid" onSubmit={createBackground}>
-          <h3>1) Фоны</h3>
+          <h3>1) Фоны (файл)</h3>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название" />
-          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Image URL (optional)" />
           <input value={hex} onChange={(e) => setHex(e.target.value)} placeholder="#RRGGBB" />
+          <input type="file" accept="image/*" onChange={(e) => setBackgroundFile(e.target.files?.[0] ?? null)} />
           <button type="submit">Создать фон</button>
         </form>
 
         <form className="card grid" onSubmit={createModel}>
-          <h3>2) Модели (анимация)</h3>
+          <h3>2) Модели (файл + анимация)</h3>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название" />
-          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Preview image URL" />
-          <input value={animationUrl} onChange={(e) => setAnimationUrl(e.target.value)} placeholder="Animation GIF/WebP URL" />
+          <input type="file" accept="image/*" onChange={(e) => setModelFile(e.target.files?.[0] ?? null)} />
+          <input type="file" accept="image/gif,image/webp,image/png" onChange={(e) => setAnimationFile(e.target.files?.[0] ?? null)} />
           <button type="submit">Создать модель</button>
         </form>
 
@@ -148,15 +158,14 @@ export default function AdminPage() {
       </section>
 
       <section className="card grid">
-        <h3>4) Создать коллекцию</h3>
+        <h3>4) Коллекция</h3>
         <input value={collectionName} onChange={(e) => setCollectionName(e.target.value)} placeholder="Название коллекции" />
         <input value={collectionDescription} onChange={(e) => setCollectionDescription(e.target.value)} placeholder="Описание" />
         <button onClick={(e) => createCollection(e as unknown as FormEvent)}>Создать коллекцию</button>
       </section>
 
       <section className="card grid">
-        <h3>5) Привязать компоненты к коллекции</h3>
-        <label>Коллекция</label>
+        <h3>5) Привязка компонентов</h3>
         <select value={selectedCollectionId} onChange={(e) => setSelectedCollectionId(e.target.value)}>
           {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -184,11 +193,20 @@ export default function AdminPage() {
       </section>
 
       <section className="card grid">
-        <h3>6) Mint из коллекции + блокчейн уникализация</h3>
+        <h3>6) Mint</h3>
         <small>Максимум комбинаций: {selectedCollection?.max_possible_supply ?? 0}</small>
         <input value={mintPrefix} onChange={(e) => setMintPrefix(e.target.value)} placeholder="Префикс NFT" />
         <input type="number" min={1} value={mintSupply} onChange={(e) => setMintSupply(Number(e.target.value))} />
         <button onClick={mintCollection}>Запустить mint</button>
+      </section>
+
+      <section className="card grid" style={{ border: '1px solid #8a243a' }}>
+        <h3>⚠ Полный сброс БД до заводских</h3>
+        <small>Введите 3 подтверждения:</small>
+        <input placeholder="YES" value={c1} onChange={(e) => setC1(e.target.value)} />
+        <input placeholder="RESET" value={c2} onChange={(e) => setC2(e.target.value)} />
+        <input placeholder="FACTORY" value={c3} onChange={(e) => setC3(e.target.value)} />
+        <button onClick={resetFactoryDb}>СБРОСИТЬ ПОЛНОСТЬЮ</button>
       </section>
     </main>
   );

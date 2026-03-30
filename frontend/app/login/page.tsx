@@ -17,7 +17,7 @@ export default function LoginPage() {
     });
 
     localStorage.setItem('token', data.token);
-    alert('Успешно');
+    location.href = '/';
   }
 
   return (

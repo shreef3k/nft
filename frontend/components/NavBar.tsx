@@ -8,8 +8,7 @@ export default function NavBar() {
   const [user, setUser] = useState<SessionUser | null>(null);
 
   useEffect(() => {
-    const session = getSession();
-    setUser(session.user);
+    setUser(getSession().user);
   }, []);
 
   return (
@@ -19,10 +18,13 @@ export default function NavBar() {
         {user ? <Link href="/my-nfts">Мои NFT</Link> : null}
         {user?.role === 'admin' ? <Link href="/admin">Админ</Link> : null}
       </div>
+
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         {user ? (
           <>
-            <small>{user.email}</small>
+            <Link href="/profile" className="card" style={{ padding: '6px 10px' }}>
+              Профиль: {user.email} ({user.role})
+            </Link>
             <button
               className="secondary"
               onClick={() => {
@@ -34,7 +36,7 @@ export default function NavBar() {
             </button>
           </>
         ) : (
-          <Link href="/login">Вход</Link>
+          <Link href="/login">Логин</Link>
         )}
       </div>
     </nav>

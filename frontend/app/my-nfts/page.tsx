@@ -10,9 +10,9 @@ type MyNft = {
   serial_no: number;
   width: number;
   height: number;
-  background_image?: string | null;
+  background_file?: string | null;
   color_hex?: string | null;
-  model_animation: string;
+  model_file: string;
   emoji_value?: string | null;
   blockchain_hash?: string;
 };
@@ -21,9 +21,7 @@ export default function MyNftsPage() {
   const [items, setItems] = useState<MyNft[]>([]);
 
   useEffect(() => {
-    api<MyNft[]>('/users/me/nfts', undefined, getToken())
-      .then(setItems)
-      .catch(() => setItems([]));
+    api<MyNft[]>('/users/me/nfts', undefined, getToken()).then(setItems).catch(() => setItems([]));
   }, []);
 
   return (
@@ -31,21 +29,7 @@ export default function MyNftsPage() {
       <h1>Мои NFT</h1>
       <div className="grid grid-3">
         {items.map((item) => (
-          <NftCard
-            key={item.instance_id}
-            item={{
-              id: item.instance_id,
-              name: item.name,
-              serial_no: item.serial_no,
-              width: item.width,
-              height: item.height,
-              background_image: item.background_image,
-              color_hex: item.color_hex,
-              model_animation: item.model_animation,
-              emoji_value: item.emoji_value,
-              blockchain_hash: item.blockchain_hash
-            }}
-          />
+          <NftCard key={item.instance_id} item={{ ...item, id: item.instance_id }} />
         ))}
       </div>
     </main>

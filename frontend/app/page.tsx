@@ -11,9 +11,9 @@ type Listing = {
   serial_no: number;
   width: number;
   height: number;
-  background_image?: string | null;
+  background_file?: string | null;
   color_hex?: string | null;
-  model_animation: string;
+  model_file: string;
   emoji_value?: string | null;
   blockchain_hash?: string;
 };
@@ -24,8 +24,7 @@ export default function MarketplacePage() {
 
   async function load() {
     try {
-      const data = await api<Listing[]>('/marketplace/listings');
-      setListings(data);
+      setListings(await api<Listing[]>('/marketplace/listings'));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -41,18 +40,14 @@ export default function MarketplacePage() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   return (
     <main className="grid" style={{ gap: 20 }}>
       <h1>Маркетплейс NFT</h1>
       {error ? <p>{error}</p> : null}
       <div className="grid grid-3">
-        {listings.map((item) => (
-          <NftCard key={item.id} item={item} onBuy={buy} />
-        ))}
+        {listings.map((item) => <NftCard key={item.id} item={item} onBuy={buy} />)}
       </div>
     </main>
   );
