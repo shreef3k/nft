@@ -1,15 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import NftCard from '../../components/NftCard';
 import { api, getToken } from '../../lib/api';
 
 type MyNft = {
   instance_id: string;
   name: string;
   serial_no: number;
-  background_image: string;
-  model_image: string;
-  hex_code: string;
+  width: number;
+  height: number;
+  background_image?: string | null;
+  color_hex?: string | null;
+  model_animation: string;
+  emoji_value?: string | null;
+  blockchain_hash?: string;
 };
 
 export default function MyNftsPage() {
@@ -26,15 +31,21 @@ export default function MyNftsPage() {
       <h1>Мои NFT</h1>
       <div className="grid grid-3">
         {items.map((item) => (
-          <div className="card" key={item.instance_id}>
-            <div className="preview">
-              <img src={item.background_image} alt="bg" />
-              <img src={item.model_image} alt="model" />
-              <div className="tint" style={{ background: item.hex_code }} />
-            </div>
-            <p>{item.name}</p>
-            <small>Серия #{item.serial_no}</small>
-          </div>
+          <NftCard
+            key={item.instance_id}
+            item={{
+              id: item.instance_id,
+              name: item.name,
+              serial_no: item.serial_no,
+              width: item.width,
+              height: item.height,
+              background_image: item.background_image,
+              color_hex: item.color_hex,
+              model_animation: item.model_animation,
+              emoji_value: item.emoji_value,
+              blockchain_hash: item.blockchain_hash
+            }}
+          />
         ))}
       </div>
     </main>

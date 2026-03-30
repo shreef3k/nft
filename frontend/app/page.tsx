@@ -9,9 +9,13 @@ type Listing = {
   price: string;
   name: string;
   serial_no: number;
-  background_image: string;
-  model_image: string;
-  hex_code: string;
+  width: number;
+  height: number;
+  background_image?: string | null;
+  color_hex?: string | null;
+  model_animation: string;
+  emoji_value?: string | null;
+  blockchain_hash?: string;
 };
 
 export default function MarketplacePage() {

@@ -1,36 +1,67 @@
-# NFT Platform (Web-only MVP)
+# NFT Platform (Web MVP + Custom Blockchain)
 
-Локальный MVP сайта по централизованной архитектуре NFT (без блокчейна):
-- Backend API (Node.js + Express + PostgreSQL)
-- Frontend (Next.js)
-- Docker Compose для быстрого запуска
+Локальный MVP сайта по централизованной архитектуре NFT + собственная внутренняя blockchain-цепочка для уникализации NFT.
 
 ## Что реализовано
 
-### Backend
-- Auth: `POST /auth/register`, `POST /auth/login`
+### Авторизация и роли
+- `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
+- JWT-сессия
+- Веб-навигация скрывает **Админ** для незалогиненных и обычных пользователей.
+- Кнопка **Выйти** в шапке.
+
+### NFT-модель (как Telegram-стиль)
+Каждый NFT собирается из:
+1. **Фон** (из разрешенных цветов / фонов)
+2. **Модель** (анимация поверх фона)
+3. **Эмодзи** (по центру)
+
+Фиксированный размер NFT: **512x512**.
+
+### Свой блокчейн (внутренний)
+- Для каждой minted NFT создается блок в `blockchain_blocks`:
+  - `prev_hash`
+  - `data_hash`
+  - `block_hash`
+  - `nonce`
+- Используется простой PoW (difficulty=3) для построения цепочки.
+- `blockchain_hash` сохраняется в `nft_instances`.
+
+### Админ-панель (разделы)
+В UI админки есть разделы:
+1. Создание фонов
+2. Создание моделей (с animation URL)
+3. Добавление эмодзи
+4. Создание коллекции
+5. Привязка компонентов к коллекции
+6. Mint из коллекции с расчетом `max_possible_supply`
+
+### Backend API (основное)
 - Marketplace: `GET /marketplace/listings`
 - User: `GET /users/me/nfts`
 - Listings: `POST /listings`, `DELETE /listings/:id`
 - Buy flow: `POST /orders/:listingId/buy` (транзакционно)
-- Admin: `POST /admin/backgrounds`, `POST /admin/models`, `POST /admin/colors`, `POST /admin/nft/template`
+- Admin bootstrap: `GET /admin/bootstrap`
+- Admin assets: `POST /admin/backgrounds`, `POST /admin/models`, `POST /admin/emojis`
+- Collections: `POST /admin/collections`,
+  - `POST /admin/collections/:id/backgrounds`
+  - `POST /admin/collections/:id/models`
+  - `POST /admin/collections/:id/emojis`
+  - `GET /admin/collections/:id/capacity`
+  - `POST /admin/collections/:id/mint`
+- Blockchain inspect: `GET /admin/blockchain`
 
-> При старте создаётся админ-пользователь:
-> - email: `admin@nft.local`
-> - password: `admin123`
+---
 
-### Frontend
-- `/` — маркетплейс с карточками и кнопкой покупки
-- `/login` — регистрация/вход
-- `/my-nfts` — мои NFT
-- `/admin` — базовая админ-форма создания слоёв
+## Инструкция по развертке и запуску
 
-## Запуск (самый простой способ)
+## Вариант A: Docker (рекомендуется)
 
 ### 1) Требования
-- Docker + Docker Compose
+- Docker
+- Docker Compose
 
-### 2) Старт
+### 2) Запуск
 ```bash
 docker compose up --build
 ```
@@ -39,28 +70,9 @@ docker compose up --build
 - Frontend: http://localhost:3000
 - Backend health: http://localhost:4000/health
 
-## Быстрый сценарий проверки
-1. Войти как `admin@nft.local / admin123` на `/login`.
-2. На `/admin` создать `background`, `model`, `color`.
-3. Создать NFT template через API (Postman/curl):
-```bash
-curl -X POST http://localhost:4000/admin/nft/template \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "backgroundId":"<UUID>",
-    "modelId":"<UUID>",
-    "colorId":"<UUID>",
-    "name":"Demo NFT",
-    "description":"Local test",
-    "supply":3
-  }'
-```
-4. Получить свои NFT: `GET /users/me/nfts`.
-5. Создать листинг `POST /listings`.
-6. Зарегистрировать второго пользователя и купить через `POST /orders/:listingId/buy`.
+---
 
-## Запуск без Docker
+## Вариант B: Без Docker
 
 ### Backend
 ```bash
@@ -77,3 +89,16 @@ cp .env.example .env.local
 npm install
 npm run dev
 ```
+
+---
+
+## Первые шаги после запуска
+
+1. Вход админа: `admin@nft.local / admin123`.
+2. Открыть `/admin`.
+3. Создать фон(ы), модель(и), эмодзи.
+4. Создать коллекцию.
+5. Привязать к коллекции фоны/модели/эмодзи.
+6. Проверить `max_possible_supply`, указать custom supply.
+7. Нажать mint.
+8. После mint можно листить NFT и покупать на маркетплейсе.

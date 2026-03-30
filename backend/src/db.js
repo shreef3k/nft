@@ -6,6 +6,9 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 
+export const NFT_WIDTH = 512;
+export const NFT_HEIGHT = 512;
+
 export async function initDb() {
   await pool.query(`
     create extension if not exists pgcrypto;
@@ -23,7 +26,8 @@ export async function initDb() {
     create table if not exists backgrounds (
       id uuid primary key default gen_random_uuid(),
       name text not null,
-      image_url text not null,
+      image_url text,
+      color_hex text,
       rarity numeric(5,2) not null default 1,
       created_by uuid not null references users(id),
       created_at timestamptz not null default now()
@@ -33,6 +37,7 @@ export async function initDb() {
       id uuid primary key default gen_random_uuid(),
       name text not null,
       image_url text not null,
+      animation_url text,
       rarity numeric(5,2) not null default 1,
       created_by uuid not null references users(id),
       created_at timestamptz not null default now()
@@ -47,18 +52,61 @@ export async function initDb() {
       created_at timestamptz not null default now()
     );
 
-    create table if not exists nft_templates (
+    create table if not exists emojis (
       id uuid primary key default gen_random_uuid(),
-      background_id uuid not null references backgrounds(id),
-      model_id uuid not null references models(id),
-      color_id uuid not null references colors(id),
+      value text not null,
+      rarity numeric(5,2) not null default 1,
+      created_by uuid not null references users(id),
+      created_at timestamptz not null default now(),
+      unique(value)
+    );
+
+    create table if not exists collections (
+      id uuid primary key default gen_random_uuid(),
       name text not null,
       description text,
+      nft_width int not null default ${NFT_WIDTH},
+      nft_height int not null default ${NFT_HEIGHT},
+      max_possible_supply int not null default 0,
+      custom_supply int not null default 0,
+      created_by uuid not null references users(id),
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists collection_backgrounds (
+      collection_id uuid not null references collections(id) on delete cascade,
+      background_id uuid not null references backgrounds(id) on delete cascade,
+      primary key (collection_id, background_id)
+    );
+
+    create table if not exists collection_models (
+      collection_id uuid not null references collections(id) on delete cascade,
+      model_id uuid not null references models(id) on delete cascade,
+      primary key (collection_id, model_id)
+    );
+
+    create table if not exists collection_emojis (
+      collection_id uuid not null references collections(id) on delete cascade,
+      emoji_id uuid not null references emojis(id) on delete cascade,
+      primary key (collection_id, emoji_id)
+    );
+
+    create table if not exists nft_templates (
+      id uuid primary key default gen_random_uuid(),
+      collection_id uuid references collections(id),
+      background_id uuid not null references backgrounds(id),
+      model_id uuid not null references models(id),
+      color_id uuid references colors(id),
+      emoji_id uuid references emojis(id),
+      name text not null,
+      description text,
+      width int not null default ${NFT_WIDTH},
+      height int not null default ${NFT_HEIGHT},
       supply int not null,
       minted_count int not null default 0,
       created_by uuid not null references users(id),
       created_at timestamptz not null default now(),
-      unique(background_id, model_id, color_id)
+      unique(background_id, model_id, emoji_id)
     );
 
     create table if not exists nft_instances (
@@ -66,8 +114,22 @@ export async function initDb() {
       template_id uuid not null references nft_templates(id),
       serial_no int not null,
       owner_id uuid not null references users(id),
+      blockchain_hash text,
       minted_at timestamptz not null default now(),
       unique(template_id, serial_no)
+    );
+
+    create table if not exists blockchain_blocks (
+      id bigserial primary key,
+      nft_instance_id uuid references nft_instances(id),
+      block_index int not null,
+      prev_hash text not null,
+      data_hash text not null,
+      block_hash text not null,
+      nonce int not null,
+      created_at timestamptz not null default now(),
+      unique(block_index),
+      unique(block_hash)
     );
 
     create table if not exists listings (
@@ -87,6 +149,14 @@ export async function initDb() {
       status text not null default 'completed',
       created_at timestamptz not null default now()
     );
+
+    alter table backgrounds add column if not exists color_hex text;
+    alter table models add column if not exists animation_url text;
+    alter table nft_templates add column if not exists collection_id uuid references collections(id);
+    alter table nft_templates add column if not exists emoji_id uuid references emojis(id);
+    alter table nft_templates add column if not exists width int not null default ${NFT_WIDTH};
+    alter table nft_templates add column if not exists height int not null default ${NFT_HEIGHT};
+    alter table nft_instances add column if not exists blockchain_hash text;
   `);
 }
 

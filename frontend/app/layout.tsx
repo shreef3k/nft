@@ -1,5 +1,5 @@
 import './globals.css';
-import Link from 'next/link';
+import NavBar from '../components/NavBar';
 
 export const metadata = {
   title: 'NFT Platform',
@@ -11,12 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru">
       <body>
         <div className="container">
-          <nav className="nav">
-            <Link href="/">Маркетплейс</Link>
-            <Link href="/my-nfts">Мои NFT</Link>
-            <Link href="/admin">Админ</Link>
-            <Link href="/login">Вход</Link>
-          </nav>
+          <NavBar />
           {children}
         </div>
       </body>
