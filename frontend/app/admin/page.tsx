@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { API_URL, api, getToken } from '../../lib/api';
+import { api, getToken, uploadApi } from '../../lib/api';
 import { getSession } from '../../lib/auth';
 
 type Option = { id: string; name?: string; value?: string };
@@ -72,12 +72,12 @@ export default function AdminPage() {
     fd.append('rarity', '5');
     fd.append('backgroundFile', backgroundFile);
 
-    await fetch(`${API_URL}/admin/backgrounds`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${getToken()}` },
-      body: fd
-    });
-    await load();
+    try {
+      await uploadApi('/admin/backgrounds', fd, getToken());
+      await load();
+    } catch (error) {
+      alert((error as Error).message);
+    }
   }
 
   async function createModel(e: FormEvent) {
@@ -89,18 +89,22 @@ export default function AdminPage() {
     fd.append('modelFile', modelFile);
     fd.append('animationFile', animationFile);
 
-    await fetch(`${API_URL}/admin/models`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${getToken()}` },
-      body: fd
-    });
-    await load();
+    try {
+      await uploadApi('/admin/models', fd, getToken());
+      await load();
+    } catch (error) {
+      alert((error as Error).message);
+    }
   }
 
   async function createEmoji(e: FormEvent) {
     e.preventDefault();
-    await api('/admin/emojis', { method: 'POST', body: JSON.stringify({ value: emoji, rarity: 5 }) }, getToken());
-    await load();
+    try {
+      await api('/admin/emojis', { method: 'POST', body: JSON.stringify({ value: emoji, rarity: 5 }) }, getToken());
+      await load();
+    } catch (error) {
+      alert((error as Error).message);
+    }
   }
 
   async function createCollection(e: FormEvent) {
